@@ -1,4 +1,5 @@
 import {
+  Dimensions,
   FlatList,
   Keyboard,
   LayoutAnimation,
@@ -23,6 +24,89 @@ import {
   getMentionPartSuggestionKeywords,
   parseValue,
 } from "../../utils/helper";
+
+const EMOJI_DATA = [
+  {
+    id: 0,
+    emoji: "❤️",
+  },
+  {
+    id: 1,
+    emoji: "🙌",
+  },
+  {
+    id: 2,
+    emoji: "🔥",
+  },
+  {
+    id: 3,
+    emoji: "👏",
+  },
+  {
+    id: 4,
+    emoji: "😢",
+  },
+  {
+    id: 5,
+    emoji: "😍",
+  },
+  {
+    id: 6,
+    emoji: "😂",
+  },
+  {
+    id: 7,
+    emoji: "🎉",
+  },
+  {
+    id: 8,
+    emoji: "💪",
+  },
+  {
+    id: 9,
+    emoji: "🤗",
+  },
+  {
+    id: 10,
+    emoji: "🌟",
+  },
+  {
+    id: 11,
+    emoji: "👍",
+  },
+  {
+    id: 12,
+    emoji: "😎",
+  },
+  {
+    id: 13,
+    emoji: "💖",
+  },
+  {
+    id: 14,
+    emoji: "✨",
+  },
+  {
+    id: 15,
+    emoji: "🎈",
+  },
+  {
+    id: 16,
+    emoji: "🌈",
+  },
+  {
+    id: 17,
+    emoji: "🍀",
+  },
+  {
+    id: 18,
+    emoji: "🎶",
+  },
+  {
+    id: 19,
+    emoji: "🍰",
+  },
+];
 
 if (
   Platform.OS === "android" &&
@@ -168,8 +252,47 @@ const Tag = () => {
     );
   };
 
+  const renderEmojiItem = ({ item, index }) => {
+    return (
+      <View>
+        <Pressable
+          style={{
+            height: 45,
+            width: Dimensions.get("screen").width / 8,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          onPress={() =>
+            setState((prev) => ({
+              ...prev,
+              text: prev.text.concat(`${item.emoji}`),
+            }))
+          }
+        >
+          <Text style={{ color: theme.colors.text, fontSize: 25 }}>
+            {item.emoji}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  };
+
   return (
     <View>
+      <View>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={EMOJI_DATA}
+          style={
+            {
+              // backgroundColor: "rgba(100, 100, 100, 0.1)",
+            }
+          }
+          renderItem={renderEmojiItem}
+          keyExtractor={(a) => a.id.toString()}
+        />
+      </View>
       <View>
         <View
           style={[
@@ -314,12 +437,12 @@ const styles = StyleSheet.create({
     maxHeight: 200,
     fontSize: 18,
     fontWeight: "normal",
-    // color: black,
     padding: 0,
     paddingVertical: Platform.OS === "android" ? 5 : 8,
     paddingTop: Platform.OS === "android" ? 5 : 8,
     paddingHorizontal: 10,
     borderRadius: 20,
+    alignSelf: "center",
   },
   sendButton: {
     width: 40,
