@@ -13,10 +13,15 @@ import {
   useColorScheme,
 } from "react-native";
 import _ from "lodash";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTheme } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
-import Animated, { SlideInDown } from "react-native-reanimated";
+import Animated, {
+  LinearTransition,
+  SlideInDown,
+  SlideOutDown,
+  enableLayoutAnimations,
+} from "react-native-reanimated";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   generateValueFromPartsAndChangedText,
@@ -24,26 +29,29 @@ import {
   getMentionPartSuggestionKeywords,
   parseValue,
 } from "../../utils/helper";
-import { EMOJI_DATA } from "../../mock/emojiData";
 
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+// if (
+//   Platform.OS === "android" &&
+//   UIManager.setLayoutAnimationEnabledExperimental
+// ) {
+//   UIManager.setLayoutAnimationEnabledExperimental(true);
+// }
 
-const customLayoutAnimation = {
-  duration: 500,
-  update: {
-    type: LayoutAnimation.Types.spring,
-    springDamping: 0.8,
-  },
-  delete: {
-    type: LayoutAnimation.Types.linear,
-    property: LayoutAnimation.Properties.opacity,
-  },
-};
+// const customLayoutAnimation = {
+//   duration: 500,
+//   create: {
+//     type: LayoutAnimation.Types.easeInEaseOut,
+//     property: LayoutAnimation.Properties.scaleY,
+//   },
+//   update: {
+//     type: LayoutAnimation.Types.easeInEaseOut,
+//     property: LayoutAnimation.Properties.scaleY,
+//   },
+//   delete: {
+//     type: LayoutAnimation.Types.easeInEaseOut,
+//     property: LayoutAnimation.Properties.scaleY,
+//   },
+// };
 
 const NativeView = (props) => {
   return (
@@ -93,7 +101,7 @@ const Tag = () => {
         ...prev,
         mention: textParam[PART_TYPES[0].trigger],
       }));
-      LayoutAnimation.configureNext(customLayoutAnimation);
+      // LayoutAnimation.configureNext(customLayoutAnimation);
     }, 100),
     []
   );
@@ -153,7 +161,7 @@ const Tag = () => {
       <View
         style={{
           backgroundColor: Platform.select({
-            android: theme.colors.card,
+            android: theme.colors.bars,
             ios: "rgba(100,100,100,0.1)",
           }),
         }}
@@ -170,106 +178,54 @@ const Tag = () => {
     );
   };
 
-  const renderEmojiItem = ({ item, index }) => {
-    return (
-      <View>
-        <Pressable
-          style={{
-            height: 45,
-            width: Dimensions.get("screen").width / 8,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-          onPress={() =>
-            setState((prev) => ({
-              ...prev,
-              text: prev.text.concat(`${item.emoji}`),
-            }))
-          }
-        >
-          <Text style={{ color: theme.colors.text, fontSize: 25 }}>
-            {item.emoji}
-          </Text>
-        </Pressable>
-      </View>
-    );
-  };
-
   return (
     <View>
       <View>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={EMOJI_DATA}
-          style={
-            {
-              // backgroundColor: "rgba(100, 100, 100, 0.1)",
-            }
+        <Animated.View
+          entering={SlideInDown.duration(1000)}
+          layout={
+            Platform.OS === "android"
+              ? LinearTransition.springify().mass(0.3)
+              : LinearTransition.springify().mass(0.5)
           }
-          renderItem={renderEmojiItem}
-          keyExtractor={(a) => a.id.toString()}
-        />
-      </View>
-      <View>
-        <View
+          exiting={SlideOutDown.duration(800)}
           style={[
-            styles.flexOne,
-            {
-              justifyContent: "flex-end",
-              position: "absolute",
-              // zIndex: 100,
-              // backgroundColor: "red",
-              bottom: 0,
-              width: "100%",
-              overflow: "hidden",
-            },
+            styles.animatedWrapperOfBlur,
+            { backgroundColor: theme.colors.screen },
           ]}
         >
           {state.mention !== undefined && (
-            <Animated.View
-              style={styles.wrapperOfAnimated}
-              exiting={SlideInDown}
-            >
-              <View
-                style={[
-                  styles.animatedWrapperOfBlur,
-                  {
-                    backgroundColor: Platform.select({
-                      android: theme.colors.border,
-                      ios: "transparent",
-                    }),
-                  },
-                ]}
-              >
-                <NativeView tint={colorScheme}>
-                  <FlatList
-                    style={{ maxHeight: 200 }}
-                    data={state.data
-                      ?.map((item) => {
-                        return {
-                          id: item._id,
-                          name: `${item.first_name} ${item.last_name}`,
-                        };
-                      })
-                      .filter((one) =>
-                        one.name
-                          .toLocaleLowerCase()
-                          .includes(state.mention.toLocaleLowerCase())
-                      )}
-                    contentContainerStyle={styles.scrollViewGap}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps={"always"}
-                    keyExtractor={(_, i) => i.toString()}
-                    renderItem={renderTagItem}
-                  />
-                </NativeView>
-              </View>
-            </Animated.View>
+            <NativeView tint={colorScheme}>
+              <FlatList
+                style={{ maxHeight: 200 }}
+                data={state.data
+                  ?.map((item) => {
+                    return {
+                      id: item._id,
+                      name: `${item.first_name} ${item.last_name}`,
+                    };
+                  })
+                  .filter((one) =>
+                    one.name
+                      .toLocaleLowerCase()
+                      .includes(state.mention?.toLocaleLowerCase())
+                  )}
+                contentContainerStyle={styles.scrollViewGap}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps={"always"}
+                keyExtractor={(_, i) => i.toString()}
+                renderItem={renderTagItem}
+              />
+            </NativeView>
           )}
-        </View>
+        </Animated.View>
       </View>
-      <View style={styles.inputWrapperBlur}>
+      <View
+        style={[
+          styles.inputWrapperBlur,
+          { backgroundColor: theme.colors.bars },
+        ]}
+      >
         <TextInput
           multiline
           placeholder="Comments..."
@@ -306,15 +262,15 @@ const Tag = () => {
 };
 
 const styles = StyleSheet.create({
-  flexOne: {
-    flex: 1,
-  },
   safeAreaContainer: {
     flex: 1,
     justifyContent: "flex-end",
   },
   scrollViewGap: {
-    gap: Platform.OS === "android" ? 1 : 2,
+    gap: Platform.select({
+      android: 1,
+      ios: 2,
+    }),
   },
   tagButtonStyle: {
     paddingHorizontal: 10,
@@ -329,21 +285,25 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   animatedWrapperOfBlur: {
+    position: "absolute",
+    zIndex: 0,
+    bottom: 0,
+    overflow: "hidden",
     marginLeft: 5,
     marginRight: 50,
+    width: Dimensions.get("window").width - 55,
     borderRadius: Platform.OS === "android" ? 0 : 10,
     borderTopLeftRadius: 15,
     borderTopRightRadius: 15,
-    overflow: "hidden",
-    elevation: 24,
+    justifyContent: "flex-end",
   },
   inputWrapperBlur: {
     flexDirection: "row",
-    paddingLeft: 5,
-    paddingRight: Platform.OS === "android" ? 5 : 0,
+    paddingLeft: 15,
+    paddingRight: Platform.OS === "android" ? 15 : 10,
     paddingVertical: 5,
-    marginHorizontal: 10,
     alignItems: "flex-end",
+    zIndex: 19,
     gap: 5,
   },
   textInputStyle: {
