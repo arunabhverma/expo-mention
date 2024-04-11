@@ -41,7 +41,6 @@ const CommentSection = () => {
   const { height } = useAnimatedKeyboard();
   const theme = useTheme();
   const { bottom } = useSafeAreaInsets();
-  console.log(`bottom::${Platform.OS}`, bottom);
   const [state, setState] = useState({
     commentData: COMMENT_DATA,
     likedIndex: [],
@@ -160,10 +159,7 @@ const CommentSection = () => {
         style={[
           animatedStyle,
           {
-            backgroundColor: Platform.select({
-              android: theme.colors.card,
-              ios: "transparent",
-            }),
+            backgroundColor: theme.colors.bars,
             position: "absolute",
             bottom: 0,
             width: "100%",
