@@ -24,7 +24,6 @@ import {
   getMentionPartSuggestionKeywords,
   parseValue,
 } from "../../utils/helper";
-import { EMOJI_DATA } from "../../mock/emojiData";
 
 if (
   Platform.OS === "android" &&
@@ -170,47 +169,8 @@ const Tag = () => {
     );
   };
 
-  const renderEmojiItem = ({ item, index }) => {
-    return (
-      <View>
-        <Pressable
-          style={{
-            height: 45,
-            width: Dimensions.get("screen").width / 8,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-          onPress={() =>
-            setState((prev) => ({
-              ...prev,
-              text: prev.text.concat(`${item.emoji}`),
-            }))
-          }
-        >
-          <Text style={{ color: theme.colors.text, fontSize: 25 }}>
-            {item.emoji}
-          </Text>
-        </Pressable>
-      </View>
-    );
-  };
-
   return (
     <View>
-      <View>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={EMOJI_DATA}
-          style={
-            {
-              // backgroundColor: "rgba(100, 100, 100, 0.1)",
-            }
-          }
-          renderItem={renderEmojiItem}
-          keyExtractor={(a) => a.id.toString()}
-        />
-      </View>
       <View>
         <View
           style={[
