@@ -223,7 +223,12 @@ const Tag = () => {
       <View
         style={[
           styles.inputWrapperBlur,
-          { backgroundColor: theme.colors.bars },
+          {
+            backgroundColor: Platform.select({
+              android: theme.colors.bars,
+              ios: "transparent",
+            }),
+          },
         ]}
       >
         <TextInput

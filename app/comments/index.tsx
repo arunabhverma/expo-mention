@@ -159,7 +159,10 @@ const CommentSection = () => {
         style={[
           animatedStyle,
           {
-            backgroundColor: theme.colors.bars,
+            backgroundColor: Platform.select({
+              android: theme.colors.card,
+              ios: "transparent",
+            }),
             position: "absolute",
             bottom: 0,
             width: "100%",
