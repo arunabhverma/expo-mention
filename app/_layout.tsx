@@ -43,8 +43,8 @@ export default function AppLayout() {
     colors: {
       ...DefaultTheme.colors,
       subText: "dimgray",
-      bars: "#f0f4f9",
-      screen: "#ffffff",
+      bars: Platform.select({ android: "#f0f4f9", ios: "white" }),
+      screen: Platform.select({ android: "#fff", ios: "white" }),
       text: "#1f1f1f",
     },
   };
@@ -52,8 +52,13 @@ export default function AppLayout() {
 
   let headerConfig = Platform.select({
     android: {
+      headerTintColor: theme.colors.text,
       statusBarColor: theme.colors.bars,
       statusBarStyle: colorScheme === "dark" ? "light" : "dark",
+      headerStyle: {
+        backgroundColor: theme.colors.bars,
+      },
+      navigationBarColor: theme.colors.bars,
     },
     ios: {
       headerLargeTitle: true,
@@ -72,13 +77,8 @@ export default function AppLayout() {
         <ThemeProvider value={theme}>
           <Stack
             screenOptions={{
-              headerTintColor: theme.colors.text,
               headerShadowVisible: false,
               headerTitle: "Posts",
-              navigationBarColor: theme.colors.bars,
-              headerStyle: {
-                backgroundColor: theme.colors.bars,
-              },
               contentStyle: {
                 backgroundColor: theme.colors.screen,
               },
