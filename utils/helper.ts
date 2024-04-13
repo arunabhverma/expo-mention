@@ -64,7 +64,6 @@ export const parseValue = (value, partTypes, positionOffset = 0) => {
   let plainText = "";
   let parts = [];
 
-  // We don't have any part types so adding just plain text part
   if (partTypes.length === 0) {
     plainText += value;
     parts.push(generatePlainTextPart(value, positionOffset));
@@ -75,12 +74,10 @@ export const parseValue = (value, partTypes, positionOffset = 0) => {
 
     const matches = Array.from(matchAll(value ?? "", regex));
 
-    // In case when we didn't get any matches continue parsing value with rest part types
     if (matches.length === 0) {
       return parseValue(value, restPartTypes, positionOffset);
     }
 
-    // In case when we have some text before matched part parsing the text with rest part types
     if (matches[0].index != 0) {
       const text = value.substr(0, matches[0].index);
 
@@ -89,15 +86,12 @@ export const parseValue = (value, partTypes, positionOffset = 0) => {
       plainText += plainTextAndParts.plainText;
     }
 
-    // Iterating over all found pattern matches
     for (let i = 0; i < matches.length; i++) {
       const result = matches[i];
 
       if (isMentionPartType(partType)) {
         const mentionData = getMentionDataFromRegExMatchResult(result);
 
-        // Matched pattern is a mention and the mention doesn't match current mention type
-        // We should parse the mention with rest part types
         if (mentionData.trigger !== partType.trigger) {
           const plainTextAndParts = parseValue(
             mentionData.original,
@@ -129,13 +123,9 @@ export const parseValue = (value, partTypes, positionOffset = 0) => {
         plainText += part.text;
       }
 
-      // Check if the result is not at the end of whole value so we have a text after matched part
-      // We should parse the text with rest part types
       if (result.index + result[0].length !== value.length) {
-        // Check if it is the last result
         const isLastResult = i === matches.length - 1;
 
-        // So we should to add the last substring of value after matched mention
         const text = value.slice(
           result.index + result[0].length,
           isLastResult ? undefined : matches[i + 1].index
@@ -152,7 +142,6 @@ export const parseValue = (value, partTypes, positionOffset = 0) => {
     }
   }
 
-  // Exiting from parseValue
   return {
     plainText,
     parts,
@@ -182,7 +171,6 @@ const getPartsInterval = (parts, cursor, count) => {
     return partsInterval;
   }
 
-  // Push whole first affected part or sub-part of the first affected part
   if (
     currentPart.position.start === cursor &&
     currentPart.position.end <= newCursor
@@ -197,12 +185,10 @@ const getPartsInterval = (parts, cursor, count) => {
   }
 
   if (newPartIndex > currentPartIndex) {
-    // Concat fully included parts
     partsInterval = partsInterval.concat(
       parts.slice(currentPartIndex + 1, newPartIndex)
     );
 
-    // Push whole last affected part or sub-part of the last affected part
     if (
       newPart.position.end === newCursor &&
       newPart.position.start >= cursor
@@ -236,31 +222,16 @@ export const generateValueFromPartsAndChangedText = (
 
   changes.forEach((change) => {
     switch (true) {
-      /**
-       * We should:
-       * - Move cursor forward on the changed text length
-       */
       case change.removed: {
         cursor += change.count;
 
         break;
       }
-
-      /**
-       * We should:
-       * - Push new part to the parts with that new text
-       */
       case change.added: {
         newParts.push(generatePlainTextPart(change.value));
 
         break;
       }
-
-      /**
-       * We should concat parts that didn't change.
-       * - In case when we have only one affected part we should push only that one sub-part
-       * - In case we have two affected parts we should push first
-       */
       default: {
         if (change.count !== 0) {
           newParts = newParts.concat(
@@ -291,54 +262,43 @@ export const getMentionPartSuggestionKeywords = (
     .forEach(({ trigger, allowedSpacesCount = 1 }) => {
       keywordByTrigger[trigger] = undefined;
 
-      // Check if we don't have selection range
       if (selection.end != selection.start) {
         return;
       }
 
-      // Find the part with the cursor
       const part = parts.find(
         (one) =>
           selection.end > one.position.start &&
           selection.end <= one.position.end
       );
 
-      // Check if the cursor is not in mention type part
       if (part == null || part.data != null) {
         return;
       }
 
       const triggerIndex = plainText.lastIndexOf(trigger, selection.end);
 
-      // Return undefined in case when:
       if (
-        // - the trigger index is not event found
         triggerIndex == -1 ||
-        // - the trigger index is out of found part with selection cursor
         triggerIndex < part.position.start ||
-        // - the trigger is not at the beginning and we don't have space or new line before trigger
         (triggerIndex > 0 && !/[\s\n]/gi.test(plainText[triggerIndex - 1]))
       ) {
         return;
       }
 
-      // Looking for break lines and spaces between the current cursor and trigger
       let spacesCount = 0;
       for (
         let cursor = selection.end - 1;
         cursor >= triggerIndex;
         cursor -= 1
       ) {
-        // Mention cannot have new line
         if (plainText[cursor] === "\n") {
           return;
         }
 
-        // Incrementing space counter if the next symbol is space
         if (plainText[cursor] === " ") {
           spacesCount += 1;
 
-          // Check maximum allowed spaces in trigger word
           if (spacesCount > allowedSpacesCount) {
             return;
           }
@@ -386,7 +346,6 @@ export const generateValueWithAddedSuggestion = (
 
   const isInsertSpaceToNextPart =
     mentionType.isInsertSpaceAfterMention &&
-    // Cursor is at the very end of parts or text row
     (plainText.length === selection.end ||
       parts[currentPartIndex]?.text.startsWith(
         "\n",
@@ -396,7 +355,6 @@ export const generateValueWithAddedSuggestion = (
   return getValueFromParts([
     ...parts.slice(0, currentPartIndex),
 
-    // Create part with string before mention
     generatePlainTextPart(
       currentPart.text.substring(0, newMentionPartPosition.start)
     ),
@@ -406,7 +364,6 @@ export const generateValueWithAddedSuggestion = (
       ...suggestion,
     }),
 
-    // Create part with rest of string after mention and add a space if needed
     generatePlainTextPart(
       `${isInsertSpaceToNextPart ? " " : ""}${currentPart.text.substring(
         newMentionPartPosition.end

@@ -2,25 +2,26 @@ import {
   Dimensions,
   FlatList,
   Keyboard,
-  LayoutAnimation,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
-  UIManager,
   View,
   useColorScheme,
 } from "react-native";
 import _ from "lodash";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useTheme } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import Animated, {
+  Extrapolation,
   LinearTransition,
   SlideInDown,
   SlideOutDown,
-  enableLayoutAnimations,
+  interpolate,
+  useAnimatedKeyboard,
+  useAnimatedStyle,
 } from "react-native-reanimated";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
@@ -29,33 +30,13 @@ import {
   getMentionPartSuggestionKeywords,
   parseValue,
 } from "../../utils/helper";
-
-// if (
-//   Platform.OS === "android" &&
-//   UIManager.setLayoutAnimationEnabledExperimental
-// ) {
-//   UIManager.setLayoutAnimationEnabledExperimental(true);
-// }
-
-// const customLayoutAnimation = {
-//   duration: 500,
-//   create: {
-//     type: LayoutAnimation.Types.easeInEaseOut,
-//     property: LayoutAnimation.Properties.scaleY,
-//   },
-//   update: {
-//     type: LayoutAnimation.Types.easeInEaseOut,
-//     property: LayoutAnimation.Properties.scaleY,
-//   },
-//   delete: {
-//     type: LayoutAnimation.Types.easeInEaseOut,
-//     property: LayoutAnimation.Properties.scaleY,
-//   },
-// };
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const NativeView = (props) => {
+  const colorScheme = useColorScheme();
   return (
     <BlurView
+      tint={colorScheme}
       intensity={Platform.select({ android: 0, ios: 100 })}
       {...props}
     />
@@ -63,6 +44,8 @@ const NativeView = (props) => {
 };
 
 const Tag = () => {
+  const { bottom } = useSafeAreaInsets();
+  const { height } = useAnimatedKeyboard();
   const theme = useTheme();
   const colorScheme = useColorScheme();
   const [selection, setSelection] = useState({ start: 0, end: 0 });
@@ -101,7 +84,6 @@ const Tag = () => {
         ...prev,
         mention: textParam[PART_TYPES[0].trigger],
       }));
-      // LayoutAnimation.configureNext(customLayoutAnimation);
     }, 100),
     []
   );
@@ -178,90 +160,113 @@ const Tag = () => {
     );
   };
 
+  const animatedBottoms = useAnimatedStyle(() => {
+    let bottomSpace = interpolate(
+      height.value,
+      [bottom, 0],
+      [0, bottom],
+      Extrapolation.CLAMP
+    );
+    let NativeBottomSpace = Platform.OS === "android" ? bottom : bottomSpace;
+    return {
+      paddingBottom: height.value + 5 + NativeBottomSpace,
+    };
+  }, [bottom, height.value]);
+
   return (
     <View>
       <View>
-        <Animated.View
-          entering={SlideInDown.duration(1000)}
-          layout={
-            Platform.OS === "android"
-              ? LinearTransition.springify().mass(0.3)
-              : LinearTransition.springify().mass(0.5)
-          }
-          exiting={SlideOutDown.duration(800)}
-          style={[
-            styles.animatedWrapperOfBlur,
-            { backgroundColor: theme.colors.screen },
-          ]}
-        >
-          {state.mention !== undefined && (
-            <NativeView tint={colorScheme}>
-              <FlatList
-                style={{ maxHeight: 200 }}
-                data={state.data
-                  ?.map((item) => {
-                    return {
-                      id: item._id,
-                      name: `${item.first_name} ${item.last_name}`,
-                    };
-                  })
-                  .filter((one) =>
-                    one.name
-                      .toLocaleLowerCase()
-                      .includes(state.mention?.toLocaleLowerCase())
-                  )}
-                contentContainerStyle={styles.scrollViewGap}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps={"always"}
-                keyExtractor={(_, i) => i.toString()}
-                renderItem={renderTagItem}
-              />
-            </NativeView>
-          )}
-        </Animated.View>
+        {state.mention !== undefined && (
+          <Animated.View
+            entering={SlideInDown.duration(500)}
+            layout={
+              Platform.OS === "android"
+                ? LinearTransition.springify().mass(0.3)
+                : LinearTransition.springify().mass(0.5)
+            }
+            exiting={SlideOutDown.duration(800)}
+            style={[
+              styles.animatedWrapperOfBlur,
+              {
+                backgroundColor: Platform.select({
+                  android: theme.colors.screen,
+                  ios: "transparent",
+                }),
+              },
+            ]}
+          >
+            {state.mention !== undefined && (
+              <NativeView tint={colorScheme}>
+                <FlatList
+                  style={{ maxHeight: 200 }}
+                  data={state.data
+                    ?.map((item) => {
+                      return {
+                        id: item._id,
+                        name: `${item.first_name} ${item.last_name}`,
+                      };
+                    })
+                    .filter((one) =>
+                      one.name
+                        .toLocaleLowerCase()
+                        .includes(state.mention?.toLocaleLowerCase())
+                    )}
+                  contentContainerStyle={styles.scrollViewGap}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps={"always"}
+                  keyExtractor={(_, i) => i.toString()}
+                  renderItem={renderTagItem}
+                />
+              </NativeView>
+            )}
+          </Animated.View>
+        )}
       </View>
-      <View
+      <NativeView
         style={[
-          styles.inputWrapperBlur,
           {
             backgroundColor: Platform.select({
               android: theme.colors.bars,
               ios: "transparent",
             }),
+            zIndex: 100,
           },
         ]}
       >
-        <TextInput
-          multiline
-          placeholder="Comments..."
-          placeholderTextColor={theme.colors.subText}
-          onSelectionChange={handleSelectionChange}
-          onChangeText={onChangeInput}
-          style={[styles.textInputStyle, { color: theme.colors.text }]}
-        >
-          <Text>
-            {parts.map(({ text, partType, data }, index) =>
-              partType ? (
-                <Text
-                  key={`${index}-${data?.trigger ?? "pattern"}`}
-                  style={partType.textStyle}
-                >
-                  {text}
-                </Text>
-              ) : (
-                <Text key={index}>{text}</Text>
-              )
-            )}
-          </Text>
-        </TextInput>
-        <Pressable onPress={onSend}>
-          <MaterialCommunityIcons
-            name="send-circle"
-            size={45}
-            color={theme.colors.primary}
-          />
-        </Pressable>
-      </View>
+        <Animated.View style={[styles.inputWrapperBlur, animatedBottoms]}>
+          <TextInput
+            multiline
+            renderToHardwareTextureAndroid
+            placeholder="Comments..."
+            placeholderTextColor={theme.colors.subText}
+            onSelectionChange={handleSelectionChange}
+            onChangeText={onChangeInput}
+            style={[styles.textInputStyle, { color: theme.colors.text }]}
+          >
+            <Text>
+              {parts.map(({ text, partType, data }, index) =>
+                partType ? (
+                  <Text
+                    key={`${index}-${data?.trigger ?? "pattern"}`}
+                    style={partType.textStyle}
+                  >
+                    {text}
+                  </Text>
+                ) : (
+                  <Text key={index}>{text}</Text>
+                )
+              )}
+            </Text>
+          </TextInput>
+          <Pressable onPress={onSend}>
+            <MaterialCommunityIcons
+              name="send-circle"
+              size={45}
+              color={theme.colors.primary}
+            />
+          </Pressable>
+        </Animated.View>
+      </NativeView>
     </View>
   );
 };
@@ -291,7 +296,6 @@ const styles = StyleSheet.create({
   },
   animatedWrapperOfBlur: {
     position: "absolute",
-    zIndex: 0,
     bottom: 0,
     overflow: "hidden",
     marginLeft: 5,
