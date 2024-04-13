@@ -2,43 +2,22 @@ import React, { useState } from "react";
 import {
   FlatList,
   Image,
-  Platform,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
   View,
-  useColorScheme,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BlurView } from "expo-blur";
 import moment from "moment";
 import { AntDesign } from "@expo/vector-icons";
-import { getRandomDate } from "../../utils/randomDate";
 import { COMMENT_DATA } from "../../mock/commentData";
 import MentionInput from "../../components/MentionInput";
 import { useTheme } from "@react-navigation/native";
-import Animated, {
-  Extrapolation,
-  interpolate,
-  useAnimatedKeyboard,
-  useAnimatedStyle,
-} from "react-native-reanimated";
-
-const NativeView = (props) => {
-  const colorScheme = useColorScheme();
-  return (
-    <BlurView
-      tint={colorScheme}
-      intensity={Platform.select({ android: 0, ios: 100 })}
-      {...props}
-    />
-  );
-};
 
 const PROFILE_SIZE = 40;
 
 const CommentSection = () => {
-  const { height } = useAnimatedKeyboard();
   const theme = useTheme();
   const { bottom } = useSafeAreaInsets();
   const [state, setState] = useState({
@@ -47,7 +26,6 @@ const CommentSection = () => {
   });
 
   const renderItem = ({ item, index }) => {
-    let postDate = getRandomDate();
     return (
       <View style={styles.cardWrapper}>
         <Image
@@ -59,10 +37,10 @@ const CommentSection = () => {
         <View style={styles.commentSection}>
           <View style={styles.commentHeader}>
             <Text style={[styles.userName, { color: theme.colors.text }]}>
-              {item.email?.split("@")?.[0]}
+              {item.userName}
             </Text>
             <Text style={[styles.date, { color: theme.colors.subText }]}>
-              {moment(postDate).fromNow()}
+              {moment(item.createdAt).fromNow()}
             </Text>
           </View>
           <View style={styles.commentBody}>
@@ -103,45 +81,33 @@ const CommentSection = () => {
                 }))
               }
             >
-              {({ pressed }) => (
-                <AntDesign
-                  name={
-                    pressed
-                      ? "heart"
-                      : state.likedIndex.includes(index)
-                      ? "heart"
-                      : "hearto"
-                  }
-                  size={15}
-                  color={
-                    pressed
-                      ? theme.colors.notification
-                      : state.likedIndex.includes(index)
-                      ? theme.colors.notification
-                      : theme.colors.subText
-                  }
-                />
-              )}
+              <AntDesign
+                name={
+                  item.isLiked
+                    ? state.likedIndex.includes(index)
+                      ? "hearto"
+                      : "heart"
+                    : state.likedIndex.includes(index)
+                    ? "heart"
+                    : "hearto"
+                }
+                size={15}
+                color={
+                  item.isLiked
+                    ? state.likedIndex.includes(index)
+                      ? theme.colors.subText
+                      : theme.colors.notification
+                    : state.likedIndex.includes(index)
+                    ? theme.colors.notification
+                    : theme.colors.subText
+                }
+              />
             </Pressable>
           </View>
         </View>
       </View>
     );
   };
-
-  const animatedStyle = useAnimatedStyle(() => {
-    let nativeBottom = Platform.OS === "android" ? 0 : bottom;
-    let paddingBottom = interpolate(
-      height.value,
-      [0, nativeBottom],
-      [0, -nativeBottom],
-      Extrapolation.CLAMP
-    );
-    return {
-      transform: [{ translateY: -height.value }],
-      bottom: paddingBottom,
-    };
-  }, [bottom, height.value]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -155,28 +121,9 @@ const CommentSection = () => {
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
       />
-      <Animated.View
-        style={[
-          animatedStyle,
-          {
-            backgroundColor: Platform.select({
-              android: theme.colors.card,
-              ios: "transparent",
-            }),
-            position: "absolute",
-            bottom: 0,
-            width: "100%",
-          },
-        ]}
-      >
-        <NativeView
-          style={{
-            paddingBottom: bottom,
-          }}
-        >
-          <MentionInput />
-        </NativeView>
-      </Animated.View>
+      <View style={styles.inputContainer}>
+        <MentionInput />
+      </View>
     </View>
   );
 };
@@ -236,5 +183,10 @@ const styles = StyleSheet.create({
   commentFooter: {
     flexDirection: "row",
     gap: 20,
+  },
+  inputContainer: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
   },
 });
