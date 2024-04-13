@@ -2,13 +2,11 @@ import {
   Dimensions,
   FlatList,
   Keyboard,
-  LayoutAnimation,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
-  UIManager,
   View,
   useColorScheme,
 } from "react-native";
@@ -16,7 +14,15 @@ import _ from "lodash";
 import React, { useCallback, useMemo, useState } from "react";
 import { useTheme } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
-import Animated, { SlideInDown } from "react-native-reanimated";
+import Animated, {
+  Extrapolation,
+  LinearTransition,
+  SlideInDown,
+  SlideOutDown,
+  interpolate,
+  useAnimatedKeyboard,
+  useAnimatedStyle,
+} from "react-native-reanimated";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   generateValueFromPartsAndChangedText,
@@ -24,112 +30,13 @@ import {
   getMentionPartSuggestionKeywords,
   parseValue,
 } from "../../utils/helper";
-
-const EMOJI_DATA = [
-  {
-    id: 0,
-    emoji: "❤️",
-  },
-  {
-    id: 1,
-    emoji: "🙌",
-  },
-  {
-    id: 2,
-    emoji: "🔥",
-  },
-  {
-    id: 3,
-    emoji: "👏",
-  },
-  {
-    id: 4,
-    emoji: "😢",
-  },
-  {
-    id: 5,
-    emoji: "😍",
-  },
-  {
-    id: 6,
-    emoji: "😂",
-  },
-  {
-    id: 7,
-    emoji: "🎉",
-  },
-  {
-    id: 8,
-    emoji: "💪",
-  },
-  {
-    id: 9,
-    emoji: "🤗",
-  },
-  {
-    id: 10,
-    emoji: "🌟",
-  },
-  {
-    id: 11,
-    emoji: "👍",
-  },
-  {
-    id: 12,
-    emoji: "😎",
-  },
-  {
-    id: 13,
-    emoji: "💖",
-  },
-  {
-    id: 14,
-    emoji: "✨",
-  },
-  {
-    id: 15,
-    emoji: "🎈",
-  },
-  {
-    id: 16,
-    emoji: "🌈",
-  },
-  {
-    id: 17,
-    emoji: "🍀",
-  },
-  {
-    id: 18,
-    emoji: "🎶",
-  },
-  {
-    id: 19,
-    emoji: "🍰",
-  },
-];
-
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
-const customLayoutAnimation = {
-  duration: 500,
-  update: {
-    type: LayoutAnimation.Types.spring,
-    springDamping: 0.8,
-  },
-  delete: {
-    type: LayoutAnimation.Types.linear,
-    property: LayoutAnimation.Properties.opacity,
-  },
-};
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const NativeView = (props) => {
+  const colorScheme = useColorScheme();
   return (
     <BlurView
+      tint={colorScheme}
       intensity={Platform.select({ android: 0, ios: 100 })}
       {...props}
     />
@@ -137,6 +44,8 @@ const NativeView = (props) => {
 };
 
 const Tag = () => {
+  const { bottom } = useSafeAreaInsets();
+  const { height } = useAnimatedKeyboard();
   const theme = useTheme();
   const colorScheme = useColorScheme();
   const [selection, setSelection] = useState({ start: 0, end: 0 });
@@ -175,7 +84,6 @@ const Tag = () => {
         ...prev,
         mention: textParam[PART_TYPES[0].trigger],
       }));
-      LayoutAnimation.configureNext(customLayoutAnimation);
     }, 100),
     []
   );
@@ -235,7 +143,7 @@ const Tag = () => {
       <View
         style={{
           backgroundColor: Platform.select({
-            android: theme.colors.card,
+            android: theme.colors.bars,
             ios: "rgba(100,100,100,0.1)",
           }),
         }}
@@ -252,151 +160,127 @@ const Tag = () => {
     );
   };
 
-  const renderEmojiItem = ({ item, index }) => {
-    return (
-      <View>
-        <Pressable
-          style={{
-            height: 45,
-            width: Dimensions.get("screen").width / 8,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-          onPress={() =>
-            setState((prev) => ({
-              ...prev,
-              text: prev.text.concat(`${item.emoji}`),
-            }))
-          }
-        >
-          <Text style={{ color: theme.colors.text, fontSize: 25 }}>
-            {item.emoji}
-          </Text>
-        </Pressable>
-      </View>
+  const animatedBottoms = useAnimatedStyle(() => {
+    let bottomSpace = interpolate(
+      height.value,
+      [bottom, 0],
+      [0, bottom],
+      Extrapolation.CLAMP
     );
-  };
+    let NativeBottomSpace = Platform.OS === "android" ? bottom : bottomSpace;
+    return {
+      paddingBottom: height.value + 5 + NativeBottomSpace,
+    };
+  }, [bottom, height.value]);
 
   return (
     <View>
       <View>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={EMOJI_DATA}
-          style={
-            {
-              // backgroundColor: "rgba(100, 100, 100, 0.1)",
+        {state.mention !== undefined && (
+          <Animated.View
+            entering={SlideInDown.duration(500)}
+            layout={
+              Platform.OS === "android"
+                ? LinearTransition.springify().mass(0.3)
+                : LinearTransition.springify().mass(0.5)
             }
-          }
-          renderItem={renderEmojiItem}
-          keyExtractor={(a) => a.id.toString()}
-        />
-      </View>
-      <View>
-        <View
-          style={[
-            styles.flexOne,
-            {
-              justifyContent: "flex-end",
-              position: "absolute",
-              // zIndex: 100,
-              // backgroundColor: "red",
-              bottom: 0,
-              width: "100%",
-              overflow: "hidden",
-            },
-          ]}
-        >
-          {state.mention !== undefined && (
-            <Animated.View
-              style={styles.wrapperOfAnimated}
-              exiting={SlideInDown}
-            >
-              <View
-                style={[
-                  styles.animatedWrapperOfBlur,
-                  {
-                    backgroundColor: Platform.select({
-                      android: theme.colors.border,
-                      ios: "transparent",
-                    }),
-                  },
-                ]}
-              >
-                <NativeView tint={colorScheme}>
-                  <FlatList
-                    style={{ maxHeight: 200 }}
-                    data={state.data
-                      ?.map((item) => {
-                        return {
-                          id: item._id,
-                          name: `${item.first_name} ${item.last_name}`,
-                        };
-                      })
-                      .filter((one) =>
-                        one.name
-                          .toLocaleLowerCase()
-                          .includes(state.mention.toLocaleLowerCase())
-                      )}
-                    contentContainerStyle={styles.scrollViewGap}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps={"always"}
-                    keyExtractor={(_, i) => i.toString()}
-                    renderItem={renderTagItem}
-                  />
-                </NativeView>
-              </View>
-            </Animated.View>
-          )}
-        </View>
-      </View>
-      <View style={styles.inputWrapperBlur}>
-        <TextInput
-          multiline
-          placeholder="Comments..."
-          placeholderTextColor={theme.colors.subText}
-          onSelectionChange={handleSelectionChange}
-          onChangeText={onChangeInput}
-          style={[styles.textInputStyle, { color: theme.colors.text }]}
-        >
-          <Text>
-            {parts.map(({ text, partType, data }, index) =>
-              partType ? (
-                <Text
-                  key={`${index}-${data?.trigger ?? "pattern"}`}
-                  style={partType.textStyle}
-                >
-                  {text}
-                </Text>
-              ) : (
-                <Text key={index}>{text}</Text>
-              )
+            exiting={SlideOutDown.duration(800)}
+            style={[
+              styles.animatedWrapperOfBlur,
+              {
+                backgroundColor: Platform.select({
+                  android: theme.colors.screen,
+                  ios: "transparent",
+                }),
+              },
+            ]}
+          >
+            {state.mention !== undefined && (
+              <NativeView tint={colorScheme}>
+                <FlatList
+                  style={{ maxHeight: 200 }}
+                  data={state.data
+                    ?.map((item) => {
+                      return {
+                        id: item._id,
+                        name: `${item.first_name} ${item.last_name}`,
+                      };
+                    })
+                    .filter((one) =>
+                      one.name
+                        .toLocaleLowerCase()
+                        .includes(state.mention?.toLocaleLowerCase())
+                    )}
+                  contentContainerStyle={styles.scrollViewGap}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps={"always"}
+                  keyExtractor={(_, i) => i.toString()}
+                  renderItem={renderTagItem}
+                />
+              </NativeView>
             )}
-          </Text>
-        </TextInput>
-        <Pressable onPress={onSend}>
-          <MaterialCommunityIcons
-            name="send-circle"
-            size={45}
-            color={theme.colors.primary}
-          />
-        </Pressable>
+          </Animated.View>
+        )}
       </View>
+      <NativeView
+        style={[
+          {
+            backgroundColor: Platform.select({
+              android: theme.colors.bars,
+              ios: "transparent",
+            }),
+            zIndex: 100,
+          },
+        ]}
+      >
+        <Animated.View style={[styles.inputWrapperBlur, animatedBottoms]}>
+          <TextInput
+            multiline
+            renderToHardwareTextureAndroid
+            placeholder="Comments..."
+            placeholderTextColor={theme.colors.subText}
+            onSelectionChange={handleSelectionChange}
+            onChangeText={onChangeInput}
+            style={[styles.textInputStyle, { color: theme.colors.text }]}
+          >
+            <Text>
+              {parts.map(({ text, partType, data }, index) =>
+                partType ? (
+                  <Text
+                    key={`${index}-${data?.trigger ?? "pattern"}`}
+                    style={partType.textStyle}
+                  >
+                    {text}
+                  </Text>
+                ) : (
+                  <Text key={index}>{text}</Text>
+                )
+              )}
+            </Text>
+          </TextInput>
+          <Pressable onPress={onSend}>
+            <MaterialCommunityIcons
+              name="send-circle"
+              size={45}
+              color={theme.colors.primary}
+            />
+          </Pressable>
+        </Animated.View>
+      </NativeView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  flexOne: {
-    flex: 1,
-  },
   safeAreaContainer: {
     flex: 1,
     justifyContent: "flex-end",
   },
   scrollViewGap: {
-    gap: Platform.OS === "android" ? 1 : 2,
+    gap: Platform.select({
+      android: 1,
+      ios: 2,
+    }),
   },
   tagButtonStyle: {
     paddingHorizontal: 10,
@@ -411,21 +295,24 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   animatedWrapperOfBlur: {
+    position: "absolute",
+    bottom: 0,
+    overflow: "hidden",
     marginLeft: 5,
     marginRight: 50,
+    width: Dimensions.get("window").width - 55,
     borderRadius: Platform.OS === "android" ? 0 : 10,
     borderTopLeftRadius: 15,
     borderTopRightRadius: 15,
-    overflow: "hidden",
-    elevation: 24,
+    justifyContent: "flex-end",
   },
   inputWrapperBlur: {
     flexDirection: "row",
-    paddingLeft: 5,
-    paddingRight: Platform.OS === "android" ? 5 : 0,
+    paddingLeft: 15,
+    paddingRight: Platform.OS === "android" ? 15 : 10,
     paddingVertical: 5,
-    marginHorizontal: 10,
     alignItems: "flex-end",
+    zIndex: 19,
     gap: 5,
   },
   textInputStyle: {
