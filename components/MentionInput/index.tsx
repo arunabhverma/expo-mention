@@ -241,7 +241,16 @@ const Tag = () => {
             placeholderTextColor={theme.colors.subText}
             onSelectionChange={handleSelectionChange}
             onChangeText={onChangeInput}
-            style={[styles.textInputStyle, { color: theme.colors.text }]}
+            style={[
+              styles.textInputStyle,
+              {
+                color: theme.colors.text,
+                backgroundColor: Platform.select({
+                  android: theme.colors.screen,
+                  ios: "rgba(100, 100, 100, 0.1)",
+                }),
+              },
+            ]}
           >
             <Text>
               {parts.map(({ text, partType, data }, index) =>
@@ -305,6 +314,16 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 15,
     borderTopRightRadius: 15,
     justifyContent: "flex-end",
+
+    shadowColor: "rgba(0, 0, 0, 0.5)",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+
+    elevation: 50,
   },
   inputWrapperBlur: {
     flexDirection: "row",
@@ -316,7 +335,6 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   textInputStyle: {
-    backgroundColor: "rgba(100,100,100,0.1)",
     flex: 1,
     textAlignVertical: "center",
     justifyContent: "center",

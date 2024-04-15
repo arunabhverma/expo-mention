@@ -43,8 +43,8 @@ export default function AppLayout() {
     colors: {
       ...DefaultTheme.colors,
       subText: "dimgray",
-      bars: Platform.select({ android: "#f0f4f9", ios: "white" }),
-      screen: Platform.select({ android: "#fff", ios: "white" }),
+      bars: Platform.select({ android: "#fff", ios: "white" }),
+      screen: Platform.select({ android: "#f3f3f8", ios: "white" }),
       text: "#1f1f1f",
     },
   };
